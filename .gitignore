@@ -1,0 +1,4 @@
+venv/
+CVPPPSegmentation/CVPPPSegmData/
+CVPPPSegmentation/CVPPPSegmData.zip
+CVPPPSegmentation/__pycache__
