@@ -9,7 +9,7 @@ class HaloLoss:
         self.labels = labels
         self.neg_weight = neg_weight
         self.size_threshold = size_threshold
-        self.graphs = []
+        self.graph = {}
         self.components = []
 
         # for i in range(predicted.size(0)):
@@ -28,58 +28,44 @@ class HaloLoss:
                 result.append((i, j + 1))
             return result
 
-        for channel in range(len(self.labels)):
-            labels_channel = self.labels[channel]
+        height = len(self.labels)
+        width = len(self.labels[0])
 
-            height = len(labels_channel)
-            width = len(labels_channel[0])
-
-            graph = {}
-
-            for i in range(height):
-                for j in range(width):
-                    if labels_channel[i][j] <= 0:
-                        continue
-                    graph[(i, j)] = []
-                    neighbors = get_neighbors(i, j)
-                    for i_neigh, j_neigh in neighbors:
-                        if labels_channel[i][j] == labels_channel[i_neigh][j_neigh]:
-                            graph[(i, j)].append((i_neigh, j_neigh))
-            
-            self.graphs.append(graph)
+        for i in range(height):
+            for j in range(width):
+                if self.labels[i][j] <= 0:
+                    continue
+                self.graph[(i, j)] = []
+                neighbors = get_neighbors(i, j)
+                for i_neigh, j_neigh in neighbors:
+                    if self.labels[i][j] == self.labels[i_neigh][j_neigh]:
+                        self.graph[(i, j)].append((i_neigh, j_neigh))
 
     
     def find_objects(self):
 
-        def dfs(u, used, component, channel):
+        def dfs(u, used, component):
             used[u] = True
             component.append(u)
-            for v in self.graphs[channel][u]:
+            for v in self.graph[u]:
                 if not used[v]:
-                    dfs(v, used, component, channel)
-        
-        for channel in range(len(self.labels)):
-            labels_channel = self.labels[channel]
+                    dfs(v, used, component)
 
-            height = len(labels_channel)
-            width = len(labels_channel[0])
+        height = len(self.labels)
+        width = len(self.labels[0])
 
-            channel_components = []
+        used = {}
+        for i in range(height):
+            for j in range(width):
+                used[(i, j)] = False
 
-            used = {}
-            for i in range(height):
-                for j in range(width):
-                    used[(i, j)] = False
+        for i in range(height):
+            for j in range(width):
+                if self.labels[i][j] > 0 and not used[(i, j)]:
+                    new_component = []
+                    dfs((i, j), used, new_component)
+                    self.components.append(new_component)
 
-            for i in range(height):
-                for j in range(width):
-                    if labels_channel[i][j] > 0 and not used[(i, j)]:
-                        new_component = []
-                        dfs((i, j), used, new_component, channel)
-                        channel_components.append(new_component)
-            
-            self.components.append(channel_components)
-                    
 
     def recoloring_stage(predicted, halo):
         pass
