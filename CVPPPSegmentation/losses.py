@@ -1,19 +1,24 @@
+import math
 import numpy
 import torch
 import torch.nn.functional as F
 
 class HaloLoss:
     
-    def __init__(self, predicted, labels, neg_weight, size_threshold):
+    def __init__(self, predicted, labels, neg_weight, colors_number, eps=0.05):
         self.predicted = predicted
         self.labels = labels
         self.height = len(self.labels)
         self.width = len(self.labels[0])
         self.neg_weight = neg_weight
-        self.size_threshold = size_threshold
+        # self.size_threshold = size_threshold
+        self.colors_number = colors_number
+        self.eps = eps
+
         self.graph = {}
         self.components = []
         self.halos = []
+        self.recolored_components = []
 
         # for i in range(predicted.size(0)):
 
@@ -82,21 +87,83 @@ class HaloLoss:
             max_y = 0
             for point in object:
                 min_x = min(min_x, point[0])
-                max_x = min(max_x, point[0])
-                min_y = min(min_y, point[0])
-                max_y = min(max_y, point[0])
+                max_x = max(max_x, point[0])
+                min_y = min(min_y, point[1])
+                max_y = max(max_y, point[1])
 
             # get halo
-            for i in range(max(min_x - max_distance, 0), min(max_x + max_distance, self.width)):
-                for j in range(max(min_y - max_distance, 0), min(max_y + max_distance, self.height)):
+            for i in range(max(min_x - max_distance, 0), min(max_x + max_distance + 1, self.height)):
+                for j in range(max(min_y - max_distance, 0), min(max_y + max_distance + 1, self.width)):
+                    if (i, j) in object:
+                        continue
                     for point in object:
-                        if squared_distance((i, j), point) <= max_distance:
+                        if squared_distance((i, j), point) <= max_distance ** 2:
                             halo.append((i, j))
 
             self.halos.append(halo)
+            
+    
+    def recoloring_stage(self):
+
+        # add/subtract eps to avoid log(0)
+        for c in range(self.colors_number):
+            for i in range(self.height):
+                for j in range(self.width):
+                    if self.predicted[c][i][j] == 0:
+                        self.predicted[c][i][j] += self.eps
+                    elif self.predicted[c][i][j] == 1:
+                        self.predicted[c][i][j] -= self.eps
+
+        # functional to maximize
+        def recoloring_functional(color, object, halo):
+            object_sum = 0
+            for point in object:
+                object_sum += math.log(self.predicted[color][point[0]][point[1]])
+            object_sum /= len(object)
+
+            halo_sum = 0
+            for point in halo:
+                halo_sum += math.log(1 - self.predicted[color][point[0]][point[1]])
+            halo_sum /= len(halo)
+
+            return object_sum + self.neg_weight * halo_sum
         
-        # assert len(self.components) == len(self.halos) - вынести в тест
+        # find best color for each component
+        for i in range(len(self.components)):
+            object = self.components[i]
+            halo = self.halos[i]
+            max_color = 1
+            max_value = recoloring_functional(1, object, halo)
+            for color in range(2, self.colors_number):
+                print(i, color)
+                value = recoloring_functional(color, object, halo)
+                print("RECOLORING object: ", object, ", color: ", color, ", value: ", value)
+                if value > max_value:
+                    max_color = color
+                    max_value = value
+            self.recolored_components.append(max_color)
 
+    
+    def compute_loss(self):
 
-    def recoloring_stage(predicted, halo):
-        pass
+        def compute_gain(object, recolored_color):
+            object_sum = 0
+            for point in object:
+                object_sum += math.log(self.predicted[recolored_color][point[0]][point[1]])
+            object_sum /= len(object)
+            return object_sum
+        
+        background_sum = 0
+        for i in range(self.height):
+            for j in range(self.width):
+                if self.labels[i][j] == 0:
+                    background_sum += math.log(self.predicted[0][i][j])
+
+        for i in range(len(self.components)):
+            object = self.components[i]
+            recolored_color = self.recolored_components[i]
+            background_sum += compute_gain(object, recolored_color)
+
+        background_sum *= -1
+        
+        return background_sum
