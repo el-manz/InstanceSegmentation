@@ -5,22 +5,19 @@ import torch.nn.functional as F
 
 class HaloLoss:
     
-    def __init__(self, predicted, labels, neg_weight, colors_number, eps=0.05):
+    def __init__(self, predicted, labels, neg_weight, eps=0.05):
         self.predicted = predicted
         self.labels = labels
         self.height = len(self.labels)
         self.width = len(self.labels[0])
         self.neg_weight = neg_weight
-        # self.size_threshold = size_threshold
-        self.colors_number = colors_number
+        self.colors_number = len(self.predicted)
         self.eps = eps
 
         self.graph = {}
         self.components = []
         self.halos = []
         self.recolored_components = []
-
-        # for i in range(predicted.size(0)):
 
     def make_graphs(self):
 
