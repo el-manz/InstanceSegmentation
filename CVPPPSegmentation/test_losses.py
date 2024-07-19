@@ -2,17 +2,15 @@ import math
 import pytest
 from losses import HaloLoss
 
-def test_recoloring():
+def test_loss():
 
     predicted = [[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
                  [[0.7, 1, 0.8, 0, 0, 0], [0, 0, 0, 0, 0, 0], [1, 0.4, 1, 0, 0, 0.9]],
                  [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]
     labels = [[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]
     neg_weight = 0.3
-    colors_number = 3
-    # size_threshold = 30 # not used in test
 
-    item = HaloLoss(predicted, labels, neg_weight, colors_number)
+    item = HaloLoss(predicted, labels, neg_weight)
 
     item.make_graphs()
 
