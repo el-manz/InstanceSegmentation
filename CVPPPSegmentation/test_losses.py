@@ -4,13 +4,14 @@ from losses import HaloLoss
 
 def test_loss():
 
-    predicted = [[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
+    predicted = [[[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
                  [[0.7, 1, 0.8, 0, 0, 0], [0, 0, 0, 0, 0, 0], [1, 0.4, 1, 0, 0, 0.9]],
-                 [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]
-    labels = [[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]
+                 [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]]
+    labels = [[[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]]
     neg_weight = 0.3
+    max_distance = 1
 
-    item = HaloLoss(predicted, labels, neg_weight)
+    item = HaloLoss(predicted, labels, neg_weight, max_distance)
 
     item.make_graphs()
 
@@ -38,7 +39,7 @@ def test_loss():
     # test finding objects
     assert item.components == true_components
 
-    item.make_halo(max_distance = 1)
+    item.make_halo()
 
     true_halos = [[(0, 1), (1, 0)],
                   [(0, 0), (0, 2), (1, 0), (1, 2), (2, 0), (2, 2)],
