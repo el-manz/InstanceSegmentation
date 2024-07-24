@@ -12,12 +12,6 @@ class Inference:
         self.size_threshold = size_threshold
         self.proximity_threshold = proximity_threshold
 
-        # self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
-        # self.graph = {}
-        # self.components = []
-        # self.components_filtered = []
-        # self.merge_graph = {}
-
     def assign_most_probable(self, elem):
         for i in range(self.height):
             for j in range(self.width):
@@ -109,8 +103,6 @@ class Inference:
                     self.merge_graph[i].append(j)
                     self.merge_graph[j].append(i)
         
-        print(self.merge_graph)
-        
         # merge final components through dfs
         self.final_components = []
         used = [False] * len(self.components_filtered)
@@ -122,17 +114,21 @@ class Inference:
                 self.final_components.append(new_merged_component)
     
     def compute_inference(self):
-        for elem in self.batch_size:
+        self.result = []
+        for elem in range(self.batch_size):
 
             self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
             self.graph = {}
             self.components = []
             self.components_filtered = []
             self.merge_graph = {}
+            self.final_components = []
 
-            # stages
+            # steps
             self.assign_most_probable(elem)
             self.make_graphs()
             self.find_objects()
             self.filter_small_objets()
             self.merge_close_objects()
+            self.result.append(self.final_components)
+        return self.result

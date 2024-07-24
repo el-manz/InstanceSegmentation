@@ -1,17 +1,24 @@
+import numpy as np
 import pytest
 from inference import Inference
 
 def test_inference():
 
-    predicted = [[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
+    predicted = [[[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
                  [[0.7, 1, 0.8, 0, 0, 0], [0, 0, 0, 0, 0, 0], [1, 0.4, 1, 0, 0, 0.9]],
-                 [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]
+                 [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]]
     size_threshold = 3
     proximity_threshold = 1
 
     item = Inference(predicted, size_threshold, proximity_threshold)
 
-    item.assign_most_probable()
+    item.reassigned_colors = np.zeros([item.height, item.width]).tolist()
+    item.graph = {}
+    item.components = []
+    item.components_filtered = []
+    item.merge_graph = {}
+
+    item.assign_most_probable(elem=0)
 
     true_reassigned = [[2, 1, 0, 0, 0, 2], [2, 2, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0]]
 
@@ -42,6 +49,11 @@ def test_inference():
 
     # test merging objects
     assert item.final_components == true_final
+
+    result = item.compute_inference()
+
+    # test all pipeline with batches
+    assert result == [true_final]
 
     # replace components_filtered to test several components case
     replaced_components_filtered = [[(0, 0), (1, 0), (1, 1)],
