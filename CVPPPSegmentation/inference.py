@@ -124,7 +124,7 @@ class Inference:
             self.merge_graph = {}
             self.final_components = []
 
-            # stages
+            # steps
             self.assign_most_probable(elem)
             self.make_graphs()
             self.find_objects()

@@ -1,79 +1,33 @@
 import math
-import numpy
+import numpy as np
 import torch
 import torch.nn.functional as F
 
-class HaloLoss:
+from prepareimage import PrepareImage
+
+class HaloLoss(PrepareImage):
     
     def __init__(self, predicted, labels, neg_weight=0.3, eps=0.05, max_distance=1):
         self.predicted = predicted
         self.labels = labels
-        self.batch_size = len(self.labels)
-        self.height = len(self.labels[0])
-        self.width = len(self.labels[0][0])
         self.neg_weight = neg_weight
         self.colors_number = len(self.predicted[0])
         self.eps = eps
         self.max_distance = max_distance
 
-    def make_graphs(self, elem):
+        super().__init__(labels)
+        self.prepare_objects()
 
-        def get_neighbors(i, j):
-            result = []
-            if i != 0:
-                result.append((i - 1, j))
-            if j != 0:
-                result.append((i, j - 1))
-            if i != self.height - 1:
-                result.append((i + 1, j))
-            if j != self.width - 1:
-                result.append((i, j + 1))
-            return result
-
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.labels[elem][i][j] <= 0:
-                    continue
-                self.graph[(i, j)] = []
-                neighbors = get_neighbors(i, j)
-                for i_neigh, j_neigh in neighbors:
-                    if self.labels[elem][i][j] == self.labels[elem][i_neigh][j_neigh]:
-                        self.graph[(i, j)].append((i_neigh, j_neigh))
-
-    
-    def find_objects(self, elem):
-
-        def dfs(u, used, component):
-            used[u] = True
-            component.append(u)
-            for v in self.graph[u]:
-                if not used[v]:
-                    dfs(v, used, component)
-
-        used = {}
-        for i in range(self.height):
-            for j in range(self.width):
-                used[(i, j)] = False
-
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.labels[elem][i][j] > 0 and not used[(i, j)]:
-                    new_component = []
-                    dfs((i, j), used, new_component)
-                    self.components.append(new_component)
-
-
-    def make_halo(self):
+    def make_halo(self, components):
 
         def squared_distance(point1, point2):
             x1, y1 = point1
             x2, y2 = point2
             return (x1 - x2) ** 2 + (y1 - y2) ** 2
         
-        for object in self.components:
-
+        halos = []
+        for object in components:
             halo = []
-
             # find framing rectangle
             min_x = self.width
             min_y = self.height
@@ -84,7 +38,6 @@ class HaloLoss:
                 max_x = max(max_x, point[0])
                 min_y = min(min_y, point[1])
                 max_y = max(max_y, point[1])
-
             # get halo
             for i in range(max(min_x - self.max_distance, 0), min(max_x + self.max_distance + 1, self.height)):
                 for j in range(max(min_y - self.max_distance, 0), min(max_y + self.max_distance + 1, self.width)):
@@ -93,57 +46,50 @@ class HaloLoss:
                     for point in object:
                         if squared_distance((i, j), point) <= self.max_distance ** 2:
                             halo.append((i, j))
-
-            self.halos.append(halo)
+            halos.append(halo)
+        return halos
             
     
-    def recoloring_stage(self, elem):
-
-        print(self.predicted)
-        print(self.colors_number)
+    def recoloring_stage(self, predicted_elem, components, halos):
 
         # add/subtract eps to avoid log(0)
         for c in range(self.colors_number):
             for i in range(self.height):
                 for j in range(self.width):
-                    if self.predicted[elem][c][i][j] == 0:
-                        self.predicted[elem][c][i][j] += self.eps
-                    elif self.predicted[elem][c][i][j] == 1:
-                        self.predicted[elem][c][i][j] -= self.eps
-
-        print(self.predicted)
+                    if predicted_elem[c][i][j] == 0:
+                        predicted_elem[c][i][j] += self.eps
+                    elif predicted_elem[c][i][j] == 1:
+                        predicted_elem[c][i][j] -= self.eps
 
         # functional to maximize
         def recoloring_functional(color, object, halo):
             object_sum = 0
             for point in object:
-                object_sum += math.log(self.predicted[elem][color][point[0]][point[1]])
+                object_sum += math.log(predicted_elem[color][point[0]][point[1]])
             object_sum /= len(object)
 
             halo_sum = 0
             for point in halo:
-                print(elem, color, point[0], point[1])
-                print(self.predicted[elem][color][point[0]][point[1]])
-                halo_sum += math.log(1 - self.predicted[elem][color][point[0]][point[1]])
-                print("ok")
+                halo_sum += math.log(1 - predicted_elem[color][point[0]][point[1]])
             halo_sum /= len(halo)
 
             return object_sum + self.neg_weight * halo_sum
         
         # find best color for each component
-        for i in range(len(self.components)):
-            object = self.components[i]
-            halo = self.halos[i]
+        recolored_components = []
+        for i in range(len(components)):
+            object = components[i]
+            halo = halos[i]
             max_color = 1
             max_value = recoloring_functional(1, object, halo)
             for color in range(2, self.colors_number):
-                print(i, color)
                 value = recoloring_functional(color, object, halo)
-                print("RECOLORING object: ", object, ", color: ", color, ", value: ", value)
                 if value > max_value:
                     max_color = color
                     max_value = value
-            self.recolored_components.append(max_color)
+            recolored_components.append(max_color)
+
+        return recolored_components
 
     
     def compute_loss(self):
@@ -159,16 +105,10 @@ class HaloLoss:
         
         for elem in range(self.batch_size):
 
-            self.graph = {}
-            self.components = []
-            self.halos = []
-            self.recolored_components = []
-
             # preliminary steps
-            self.make_graphs(elem)
-            self.find_objects(elem)
-            self.make_halo()
-            self.recoloring_stage(elem)
+            halos = self.make_halo(self.components_batch[elem])
+            recolored_components = self.recoloring_stage(self.predicted[elem],
+                                                         self.components_batch[elem], halos)
 
             background_sum = 0
             for i in range(self.height):
@@ -176,9 +116,9 @@ class HaloLoss:
                     if self.labels[elem][i][j] == 0:
                         background_sum += math.log(self.predicted[elem][0][i][j])
 
-            for i in range(len(self.components)):
-                object = self.components[i]
-                recolored_color = self.recolored_components[i]
+            for i in range(len(self.components_batch[elem])):
+                object = self.components_batch[elem][i]
+                recolored_color = recolored_components[i]
                 background_sum += compute_gain(object, recolored_color, elem)
 
             background_sum *= -1
@@ -186,3 +126,15 @@ class HaloLoss:
             total_loss += background_sum
         
         return total_loss / self.batch_size
+    
+# predicted = [[[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
+#                  [[0.7, 1, 0.8, 0, 0, 0], [0, 0, 0, 0, 0, 0], [1, 0.4, 1, 0, 0, 0.9]],
+#                  [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]]
+# labels = [[[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]]
+# neg_weight = 0.3
+# eps = 0.05
+# max_distance = 1
+# item = HaloLoss(predicted, labels)
+
+# print(item.batch_size, item.height, item.width)
+# print(item.graph_batch)
