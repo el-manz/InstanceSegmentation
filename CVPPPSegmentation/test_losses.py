@@ -9,11 +9,17 @@ def test_loss():
                  [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]]
     labels = [[[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]]
     neg_weight = 0.3
+    eps = 0.05
     max_distance = 1
 
-    item = HaloLoss(predicted, labels, neg_weight, max_distance)
+    item = HaloLoss(predicted, labels, neg_weight, eps, max_distance)
 
-    item.make_graphs()
+    item.graph = {}
+    item.components = []
+    item.halos = []
+    item.recolored_components = []
+
+    item.make_graphs(elem=0)
 
     true_graph = {(0, 0): [],
                     (0, 1): [(1, 1)],
@@ -27,7 +33,7 @@ def test_loss():
     # test making graph
     assert item.graph == true_graph
     
-    item.find_objects()
+    item.find_objects(elem=0)
     
     true_components = [[(0, 0)],
                        [(0, 1), (1, 1), (2, 1)],
@@ -52,7 +58,7 @@ def test_loss():
     assert len(item.components) == len(item.halos)
     assert item.halos == true_halos
 
-    item.recoloring_stage()
+    item.recoloring_stage(elem=0)
 
     true_recolored = [2, 2, 2, 1, 1, 1]
 

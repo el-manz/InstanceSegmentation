@@ -5,25 +5,26 @@ class Inference:
     
     def __init__(self, predicted, size_threshold, proximity_threshold):
         self.predicted = predicted
-        self.colors_number = len(self.predicted)
-        self.height = len(self.predicted[0])
-        self.width = len(self.predicted[0][0])
+        self.batch_size = len(self.predicted)
+        self.colors_number = len(self.predicted[0])
+        self.height = len(self.predicted[0][0])
+        self.width = len(self.predicted[0][0][0])
         self.size_threshold = size_threshold
         self.proximity_threshold = proximity_threshold
 
-        self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
-        self.graph = {}
-        self.components = []
-        self.components_filtered = []
-        self.merge_graph = {}
+        # self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
+        # self.graph = {}
+        # self.components = []
+        # self.components_filtered = []
+        # self.merge_graph = {}
 
-    def assign_most_probable(self):
+    def assign_most_probable(self, elem):
         for i in range(self.height):
             for j in range(self.width):
                 most_probable_color = 0
-                max_probability = self.predicted[0][i][j]
+                max_probability = self.predicted[elem][0][i][j]
                 for c in range(self.colors_number):
-                    probability = self.predicted[c][i][j]
+                    probability = self.predicted[elem][c][i][j]
                     if probability > max_probability:
                         most_probable_color = c
                         max_probability = probability
@@ -119,3 +120,19 @@ class Inference:
                 new_merged_component = []
                 merge_dfs(i, used, new_merged_component)
                 self.final_components.append(new_merged_component)
+    
+    def compute_inference(self):
+        for elem in self.batch_size:
+
+            self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
+            self.graph = {}
+            self.components = []
+            self.components_filtered = []
+            self.merge_graph = {}
+
+            # stages
+            self.assign_most_probable(elem)
+            self.make_graphs()
+            self.find_objects()
+            self.filter_small_objets()
+            self.merge_close_objects()
