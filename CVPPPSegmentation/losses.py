@@ -12,14 +12,9 @@ class HaloLoss:
         self.height = len(self.labels[0])
         self.width = len(self.labels[0][0])
         self.neg_weight = neg_weight
-        self.colors_number = len(self.predicted)
+        self.colors_number = len(self.predicted[0])
         self.eps = eps
         self.max_distance = max_distance
-
-        # self.graph = {}
-        # self.components = []
-        # self.halos = []
-        # self.recolored_components = []
 
     def make_graphs(self, elem):
 
@@ -104,6 +99,9 @@ class HaloLoss:
     
     def recoloring_stage(self, elem):
 
+        print(self.predicted)
+        print(self.colors_number)
+
         # add/subtract eps to avoid log(0)
         for c in range(self.colors_number):
             for i in range(self.height):
@@ -112,6 +110,8 @@ class HaloLoss:
                         self.predicted[elem][c][i][j] += self.eps
                     elif self.predicted[elem][c][i][j] == 1:
                         self.predicted[elem][c][i][j] -= self.eps
+
+        print(self.predicted)
 
         # functional to maximize
         def recoloring_functional(color, object, halo):
@@ -122,7 +122,10 @@ class HaloLoss:
 
             halo_sum = 0
             for point in halo:
+                print(elem, color, point[0], point[1])
+                print(self.predicted[elem][color][point[0]][point[1]])
                 halo_sum += math.log(1 - self.predicted[elem][color][point[0]][point[1]])
+                print("ok")
             halo_sum /= len(halo)
 
             return object_sum + self.neg_weight * halo_sum
