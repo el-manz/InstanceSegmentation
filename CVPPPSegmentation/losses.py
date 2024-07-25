@@ -15,7 +15,7 @@ class HaloLoss(PrepareImage):
         self.eps = eps
         self.max_distance = max_distance
 
-        super().__init__(labels)
+        super().__init__(self.labels)
         self.prepare_objects()
 
     def make_halo(self, components):
@@ -126,15 +126,3 @@ class HaloLoss(PrepareImage):
             total_loss += background_sum
         
         return total_loss / self.batch_size
-    
-# predicted = [[[[0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0], [1, 1, 0, 1, 1, 1]],
-#                  [[0.7, 1, 0.8, 0, 0, 0], [0, 0, 0, 0, 0, 0], [1, 0.4, 1, 0, 0, 0.9]],
-#                  [[1, 0.5, 0.9, 0, 0, 0.8], [0.2, 1, 0.3, 0, 0, 0], [0.7, 0.1, 0.4, 0.5, 0, 0.05]]]]
-# labels = [[[1, 2, 1, 0, 0, 0], [0, 2, 0, 0, 0, 0], [1, 2, 1, 0, 0, 1]]]
-# neg_weight = 0.3
-# eps = 0.05
-# max_distance = 1
-# item = HaloLoss(predicted, labels)
-
-# print(item.batch_size, item.height, item.width)
-# print(item.graph_batch)
