@@ -85,15 +85,7 @@ class Inference(PrepareImage):
     def compute_inference(self):
         self.result = []
         for elem in range(self.batch_size):
-
-            # self.reassigned_colors = np.zeros([self.height, self.width]).tolist()
-            # self.merge_graph = {}
-            # self.final_components = []
-
             # steps
-            # self.assign_most_probable(elem)
-            # self.make_graphs()
-            # self.find_objects()
             components_filtered = self.filter_small_objets(self.components_batch[elem])
             final_components = self.merge_close_objects(self.reassigned_colors[elem], components_filtered)
             self.result.append(final_components)
